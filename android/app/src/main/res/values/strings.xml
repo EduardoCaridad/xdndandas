@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">xdndandas</string>
+    <string name="title_activity_main">xdndandas</string>
+    <string name="package_name">es.xdndandas.app</string>
+    <string name="custom_url_scheme">es.xdndandas.app</string>
+</resources>

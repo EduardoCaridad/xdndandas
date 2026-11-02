@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>xdndandas · Transporte en tiempo real</title>
+  <meta name="description" content="Busca trenes, autobuses y aviones entre dos ciudades y sigue en tiempo real por dónde van. Gratis y de código abierto.">
+  <meta name="theme-color" content="#0f3d5e">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="xdndandas">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1><img src="icons/icon.svg" alt="" class="logo"> xdndandas</h1>
+      <p class="tagline">Trenes, autobuses y aviones en tiempo real</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Búsqueda -->
+    <section id="search-view">
+      <form id="search-form" class="card" autocomplete="off" novalidate>
+        <div class="places">
+          <div class="field place-field">
+            <label for="from">Origen</label>
+            <div class="input-wrap">
+              <input id="from" type="text" placeholder="Ciudad o estación, p. ej. A Coruña" required>
+              <ul class="suggestions" id="from-suggestions" role="listbox"></ul>
+            </div>
+            <div class="stations" id="from-stations" hidden></div>
+          </div>
+          <button type="button" id="swap" class="swap" title="Intercambiar origen y destino" aria-label="Intercambiar origen y destino">⇅</button>
+          <div class="field place-field">
+            <label for="to">Destino</label>
+            <div class="input-wrap">
+              <input id="to" type="text" placeholder="Ciudad o estación, p. ej. Madrid" required>
+              <ul class="suggestions" id="to-suggestions" role="listbox"></ul>
+            </div>
+            <div class="stations" id="to-stations" hidden></div>
+          </div>
+        </div>
+
+
+        <div class="row">
+          <div class="field">
+            <label for="date">Día</label>
+            <input id="date" type="date" required>
+          </div>
+          <fieldset class="field modes">
+            <legend>Medio de transporte <small>(si no marcas ninguno, se buscan todos)</small></legend>
+            <label class="chip"><input type="checkbox" name="mode" value="plane"><span>✈️ Avión</span></label>
+            <label class="chip"><input type="checkbox" name="mode" value="train"><span>🚆 Tren</span></label>
+            <label class="chip"><input type="checkbox" name="mode" value="bus"><span>🚌 Autobús</span></label>
+          </fieldset>
+        </div>
+
+        <div class="row end">
+          <label class="check"><input type="checkbox" id="direct" checked> Solo directos (sin transbordos)</label>
+          <button type="submit" class="primary" id="search-btn">Buscar</button>
+        </div>
+
+        <details class="settings" id="settings">
+          <summary>⚙️ Ajustes</summary>
+          <div class="settings-body">
+            <label for="airlabs-key">Clave gratuita de AirLabs <small>(para ver los vuelos que van a salir)</small></label>
+            <div class="key-row">
+              <input id="airlabs-key" type="text" placeholder="Pega aquí tu API Key" autocomplete="off" autocapitalize="off" spellcheck="false">
+              <button type="button" id="key-save" class="secondary">Guardar</button>
+            </div>
+            <p class="small muted" id="key-status"></p>
+            <ol class="small muted">
+              <li>Crea una cuenta gratis en <a href="https://airlabs.co/signup" target="_blank" rel="noopener">airlabs.co</a> (plan Free, uso personal, sin tarjeta).</li>
+              <li>En tu panel, copia la <b>API Key</b>.</li>
+              <li>Pégala aquí y pulsa Guardar. Se guarda solo en este dispositivo.</li>
+            </ol>
+            <p class="small muted">Sin clave, la app muestra igualmente los aviones que están volando ahora, y todos los trenes y autobuses.</p>
+          </div>
+        </details>
+      </form>
+
+      <div id="results" class="results" aria-live="polite"></div>
+    </section>
+
+    <!-- Seguimiento -->
+    <section id="track-view" hidden>
+      <button type="button" id="back" class="link">← Volver a la lista</button>
+      <div class="card track">
+        <div class="track-head">
+          <div class="track-icon" id="t-icon"></div>
+          <div>
+            <h2 id="t-title"></h2>
+            <p id="t-sub" class="muted"></p>
+          </div>
+          <span id="t-live" class="badge"></span>
+        </div>
+
+        <div class="endpoints">
+          <div><strong id="t-from"></strong><span id="t-dep" class="muted"></span></div>
+          <div class="right"><strong id="t-to"></strong><span id="t-arr" class="muted"></span></div>
+        </div>
+
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="t-bar">
+          <div class="progress-fill" id="t-fill"></div>
+          <div class="progress-dot" id="t-dot"></div>
+        </div>
+        <div class="progress-legend">
+          <span id="t-pct" class="big"></span>
+          <span id="t-left" class="big right"></span>
+        </div>
+
+        <div class="where">
+          <span class="where-label">Dónde está ahora</span>
+          <p id="t-where" class="where-main"></p>
+          <p id="t-near" class="muted"></p>
+        </div>
+
+        <div class="facts" id="t-facts"></div>
+
+        <div id="map" class="map" aria-label="Mapa con la posición"></div>
+
+        <details id="t-stops-wrap" open>
+          <summary>Paradas</summary>
+          <ol id="t-stops" class="stops"></ol>
+        </details>
+
+        <p class="muted small" id="t-note"></p>
+        <p class="muted small">Actualizado: <span id="t-updated">—</span> · se actualiza solo cada <span id="t-every"></span> s</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Proyecto libre y gratuito. Datos: <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a> (horarios abiertos GTFS/GTFS-RT),
+      <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (ODbL) y
+      <a href="https://opensky-network.org" target="_blank" rel="noopener">OpenSky Network</a> para vuelos,
+      <a href="https://ourairports.com/data/" target="_blank" rel="noopener">OurAirports</a>,
+      mapa y nombres © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores de OpenStreetMap</a>.</p>
+  </footer>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

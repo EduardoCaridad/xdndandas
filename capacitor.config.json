@@ -1,0 +1,17 @@
+{
+  "appId": "es.xdndandas.app",
+  "appName": "xdndandas",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "SplashScreen": {
+      "backgroundColor": "#0f3d5e"
+    }
+  },
+  "android": {
+    "backgroundColor": "#0f3d5e"
+  },
+  "appendUserAgent": "xdndandas/1.0 (app libre; github)"
+}

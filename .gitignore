@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+.wrangler/
+_site/
+www/
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
